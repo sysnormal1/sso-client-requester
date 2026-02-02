@@ -1,17 +1,18 @@
 package com.sysnormal.libs.security.sso.spring.client_requester.services;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sysnormal.libs.commons.DefaultDataSwap;
 import com.sysnormal.libs.utils.network.http.response.ClientRawResponseWrapper;
 import com.sysnormal.libs.utils.network.http.response.ResponseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -22,7 +23,10 @@ import java.util.Map;
 public class SsoClientRequesterService {
     private static final Logger logger = LoggerFactory.getLogger(SsoClientRequesterService.class);
 
-    private final ObjectMapper mapper = new ObjectMapper();
+    //private final ObjectMapper mapper = new ObjectMapper();
+
+    @Autowired
+    ObjectMapper objectMapper;
 
     public static final int MAX_RECURSIVE_REQUEST_ATTEMPS = 10;
 
@@ -114,14 +118,16 @@ public class SsoClientRequesterService {
             if (result.success) {
                 JsonNode jsonData = (JsonNode) result.data;
                 String token = jsonData.get("token").asText();
+                logger.debug("token {}",token);
 
                 // split token
                 String[] parts = token.split("\\.");
                 String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
                 // parse JSON
-                Map<String, Object> payloadMap = mapper.readValue(payload, Map.class);
+                Map<String, Object> payloadMap = objectMapper.readValue(payload, Map.class);
                 // pega o exp
                 long expiresIn = ((Number) payloadMap.get("exp")).longValue();
+                logger.debug("expiresIn {}",expiresIn);
                 if (StringUtils.hasText(token) && expiresIn > 0) {
                     this.lastToken = token;
                     this.tokenExpiration = Instant.now().plusSeconds(expiresIn);
