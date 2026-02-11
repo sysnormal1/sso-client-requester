@@ -1,59 +1,46 @@
 package com.sysnormal.libs.security.sso.spring.client_requester.services;
 
 import com.sysnormal.libs.commons.DefaultDataSwap;
+import com.sysnormal.libs.security.sso.spring.client_requester.properties.SsoProperties;
+import com.sysnormal.libs.utils.TextUtils;
+import com.sysnormal.libs.utils.TokenUtils;
 import com.sysnormal.libs.utils.network.http.response.ClientRawResponseWrapper;
 import com.sysnormal.libs.utils.network.http.response.ResponseUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.WebClient;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
-import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
-import java.util.Map;
 
 @Service
 public class SsoClientRequesterService {
     private static final Logger logger = LoggerFactory.getLogger(SsoClientRequesterService.class);
-
-    //private final ObjectMapper mapper = new ObjectMapper();
 
     @Autowired
     ObjectMapper objectMapper;
 
     public static final int MAX_RECURSIVE_REQUEST_ATTEMPS = 10;
 
-    private final String baseSsoEndpoint;
+    private final SsoProperties ssoProperties;
 
-    private final String ssoLoginEndPoint;
-
-    private final String ssoDefaultEmail;
-
-    private final String ssoDefaultPassword;
 
     private final WebClient ssoWebClient;
 
     private String lastToken = null;
-    private Instant tokenExpiration = null;
+    private Instant lastTokenExpirationInstant = null;
+    private String lastRefreshToken = null;
+    private Instant lastRefreshTokenExpirationInstant = null;
 
-    public SsoClientRequesterService(
-            @Value("${sso.base-endpoint}") String baseSsoEndpoint,
-            @Value("${sso.login-endpoint}") String ssoLoginEndPoint,
-            @Value("${sso.default-email}") String ssoDefaultEmail,
-            @Value("${sso.default-password}") String ssoDefaultPassword
-    ) {
-        this.baseSsoEndpoint = baseSsoEndpoint;
-        this.ssoLoginEndPoint = ssoLoginEndPoint;
-        this.ssoWebClient = WebClient.create(baseSsoEndpoint);
-        this.ssoDefaultEmail = ssoDefaultEmail;
-        this.ssoDefaultPassword = ssoDefaultPassword;
+    public SsoClientRequesterService(SsoProperties ssoProperties) {
+        this.ssoProperties = ssoProperties;
+        this.ssoWebClient = WebClient.create(this.ssoProperties.getBaseEndpoint());
     }
 
     public boolean checkExpiredToken(DefaultDataSwap dataSwapResult, ClientRawResponseWrapper response) {
@@ -69,12 +56,25 @@ public class SsoClientRequesterService {
         return result;
     }
 
-    public DefaultDataSwap refreshToken() {
+    public DefaultDataSwap refreshToken(
+            String refreshToken,
+            String agentIdentifier,
+            String agentPassword,
+            Long systemId
+    ) {
         logger.debug("INIT {}.{}",this.getClass().getSimpleName(), "refreshToken");
         DefaultDataSwap result = new DefaultDataSwap();
         try {
-            logger.debug("refreshing token (re-login)");
-            result = loginOnSso(ssoDefaultEmail, ssoDefaultPassword);
+            if (TextUtils.hasNotNullText(refreshToken)) {
+                Long expirationIn = TokenUtils.getExpiration(refreshToken);
+                if (expirationIn != null && expirationIn * 1000 > System.currentTimeMillis()) {
+                    result = refreshTokenOnSso(refreshToken);
+                } else {
+                    result = loginOnSso(agentIdentifier, agentPassword, systemId);
+                }
+            } else {
+                result = loginOnSso(agentIdentifier, agentPassword, systemId);
+            }
         } catch (Exception e) {
             result.setException(e);
         }
@@ -84,13 +84,23 @@ public class SsoClientRequesterService {
 
 
 
-    public String getToken(){
+    public String getToken(String email, String password, Long systemId) {
         logger.debug("INIT {}.{}",this.getClass().getSimpleName(), "getToken");
+        logger.debug("current token {}, expires in {}, remaining seconds {}", lastToken, lastTokenExpirationInstant, lastTokenExpirationInstant != null ? Duration.between(Instant.now(), lastTokenExpirationInstant).getSeconds() : 0);
+        logger.debug("current refreshToken {}, expires in {}, remaining seconds {}", lastRefreshToken, lastRefreshTokenExpirationInstant, lastRefreshTokenExpirationInstant != null ? Duration.between(Instant.now(), lastRefreshTokenExpirationInstant).getSeconds() : 0);
         String result = null;
-        if (StringUtils.hasText(lastToken) && tokenExpiration != null && Instant.now().isBefore(tokenExpiration.minusSeconds(30))) {
+        if (StringUtils.hasText(lastToken) && lastTokenExpirationInstant != null && Instant.now().isBefore(lastTokenExpirationInstant.minusSeconds(30))) {
+            logger.debug("using corrent token");
             result = lastToken;
+        } else if (StringUtils.hasText(lastRefreshToken) && lastRefreshTokenExpirationInstant != null && Instant.now().isBefore(lastRefreshTokenExpirationInstant.minusSeconds(30))) {
+            logger.debug("using corrent refresh token");
+            DefaultDataSwap loginResponse = refreshToken(lastRefreshToken, email, password, systemId);
+            if (loginResponse.success) {
+                result = lastToken;
+            }
         } else {
-            DefaultDataSwap loginResponse = loginOnSso(ssoDefaultEmail, ssoDefaultPassword);
+            logger.debug("using new login");
+            DefaultDataSwap loginResponse = loginOnSso(email, password, systemId);
             if (loginResponse.success) {
                 result = lastToken;
             }
@@ -98,16 +108,68 @@ public class SsoClientRequesterService {
         logger.debug("END {}.{} {}",this.getClass().getSimpleName(), "getToken", result);
         return result;
     }
+    public String getToken() {
+        return getToken(this.ssoProperties.getDefaultEmail(), this.ssoProperties.getDefaultPassword(), null);
+    }
+    public String getToken(String email, String password) {
+        return getToken(email, password, null);
+    }
 
-    public DefaultDataSwap loginOnSso(String email, String password) {
+    public void handleLoginResult(DefaultDataSwap result) throws Exception {
+        logger.debug("INIT {}.{}",this.getClass().getSimpleName(), "handleLoginResult");
+        if (result != null) {
+            if (result.success) {
+                JsonNode jsonData = (JsonNode) result.data;
+
+                //get token
+                String token = jsonData.get("token").asText();
+                logger.debug("token {}", token);
+                if (TextUtils.hasNotNullText(token)) {
+                    Long expiresIn = TokenUtils.getExpiration(token); //seconds
+                    logger.debug("expiresIn {}, now millis {}, seconds remaining {}", expiresIn, System.currentTimeMillis(), (expiresIn != null && expiresIn > 0) ? expiresIn - System.currentTimeMillis() / 1000 : "infinit");
+                    if (expiresIn == null || (expiresIn != null && expiresIn * 1000 > System.currentTimeMillis())) {
+                        this.lastToken = token;
+                        this.lastTokenExpirationInstant = expiresIn != null ? Instant.ofEpochSecond(expiresIn) : null;
+
+                        //get refreshToekn
+                        this.lastRefreshToken = null;
+                        this.lastRefreshTokenExpirationInstant = null;
+                        String refreshToken = jsonData.get("refreshToken").asText();
+                        logger.debug("refreshToken {}", refreshToken);
+                        if (TextUtils.hasNotNullText(refreshToken)) {
+                            expiresIn = TokenUtils.getExpiration(refreshToken);
+                            if (expiresIn == null || (expiresIn != null && expiresIn * 1000 > System.currentTimeMillis())) {
+                                this.lastRefreshToken = refreshToken;
+                                this.lastRefreshTokenExpirationInstant = expiresIn != null ? Instant.ofEpochSecond(expiresIn) : null;
+                            }
+                        }
+
+                    } else {
+                        throw new Exception("token expired");
+                    }
+                } else {
+                    throw new Exception("token is empty");
+                }
+            } else {
+                logger.warn("login result is fail {] {}", result.httpStatusCode, result.message);
+            }
+        } else {
+            logger.warn("login result is null");
+        }
+        logger.debug("END {}.{}",this.getClass().getSimpleName(), "handleLoginResult");
+    }
+
+    public DefaultDataSwap loginOnSso(String email, String password, Long systemId) {
         logger.debug("INIT {}.{}",this.getClass().getSimpleName(), "loginOnSso");
         DefaultDataSwap result = new DefaultDataSwap();
         try {
+            String bodyValue = "{" + (systemId != null ? "\"systemId\":"+systemId+"," : "") + "\"email\":\"" + email + "\",\"password\":\"" + password + "\"}";
+            logger.debug("bodyValue {}", bodyValue);
             ClientRawResponseWrapper response = ssoWebClient.post()
-                    .uri(ssoLoginEndPoint)
+                    .uri(this.ssoProperties.getLoginEndpoint())
                     .accept(MediaType.APPLICATION_JSON)
                     .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue("{\"email\":\"" + email + "\",\"password\":\"" + password + "\"}")
+                    .bodyValue(bodyValue)
                     .exchangeToMono(resp ->
                             resp.bodyToMono(String.class)
                                     .defaultIfEmpty("")     // garante que nunca será null
@@ -115,28 +177,49 @@ public class SsoClientRequesterService {
                     )
                     .block();
             result = ResponseUtils.handleResponse(response);
-            if (result.success) {
-                JsonNode jsonData = (JsonNode) result.data;
-                String token = jsonData.get("token").asText();
-                logger.debug("token {}",token);
-
-                // split token
-                String[] parts = token.split("\\.");
-                String payload = new String(Base64.getUrlDecoder().decode(parts[1]), StandardCharsets.UTF_8);
-                // parse JSON
-                Map<String, Object> payloadMap = objectMapper.readValue(payload, Map.class);
-                // pega o exp
-                long expiresIn = ((Number) payloadMap.get("exp")).longValue();
-                logger.debug("expiresIn {}",expiresIn);
-                if (StringUtils.hasText(token) && expiresIn > 0) {
-                    this.lastToken = token;
-                    this.tokenExpiration = Instant.now().plusSeconds(expiresIn);
-                }
-            }
+            handleLoginResult(result);
         } catch (Exception e) {
             result.setException(e);
         }
         logger.debug("END {}.{}",this.getClass().getSimpleName(), "loginOnSso");
         return result;
+    }
+    public DefaultDataSwap loginOnSso() {
+        return loginOnSso(this.ssoProperties.getDefaultEmail(), this.ssoProperties.getDefaultPassword(), null);
+    }
+    public DefaultDataSwap loginOnSso(String email, String password) {
+        return loginOnSso(email, password, null);
+    }
+    public DefaultDataSwap loginOnSso(Long systemId) {
+        return loginOnSso(this.ssoProperties.getDefaultEmail(), this.ssoProperties.getDefaultPassword(), systemId);
+    }
+
+    public DefaultDataSwap refreshTokenOnSso(String refreshToken) {
+        logger.debug("INIT {}.{}",this.getClass().getSimpleName(), "refreshTokenOnSso");
+        DefaultDataSwap result = new DefaultDataSwap();
+        try {
+            String bodyValue = "{\"refreshToken\":\"" + refreshToken + "\"}";
+            logger.debug("bodyValue {}", bodyValue);
+            ClientRawResponseWrapper response = ssoWebClient.post()
+                    .uri(this.ssoProperties.getRefreshTokenEndpoint())
+                    .accept(MediaType.APPLICATION_JSON)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(bodyValue)
+                    .exchangeToMono(resp ->
+                            resp.bodyToMono(String.class)
+                                    .defaultIfEmpty("")     // garante que nunca será null
+                                    .map(body -> new ClientRawResponseWrapper(resp, body))
+                    )
+                    .block();
+            result = ResponseUtils.handleResponse(response);
+            handleLoginResult(result);
+        } catch (Exception e) {
+            result.setException(e);
+        }
+        logger.debug("END {}.{}",this.getClass().getSimpleName(), "refreshTokenOnSso");
+        return result;
+    }
+    public DefaultDataSwap refreshTokenOnSso() {
+        return refreshTokenOnSso(this.lastRefreshToken);
     }
 }
