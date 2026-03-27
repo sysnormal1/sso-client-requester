@@ -1,4 +1,4 @@
-package com.sysnormal.libs.security.sso.spring.client_requester.properties;
+package com.sysnormal.security.auth.sso.sso_client_requester.properties;
 
 import lombok.Getter;
 import lombok.Setter;

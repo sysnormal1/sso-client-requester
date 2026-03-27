@@ -36,13 +36,13 @@ implementation 'com.sysnormal.libs.security.sso.spring:client-requester:0.0.1-SN
 This library is auto-configuration, but is necessary inject this at here necessary:
 
 ````java
-import com.sysnormal.libs.security.sso.spring.client_requester.services.SsoClientRequesterService;
+import services.com.sysnormal.security.auth.sso.sso_client_requester.SsoClientRequesterService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 @Autowired
 private SsoClientRequesterService ssoClientRequesterService;
 ...
-DefaultDataSwap loginResponse = ssoClientRequesterService.loginOnSso(email,pasword);
+DefaultDataSwap loginResponse = ssoClientRequesterService.loginOnSso(email, pasword);
 ````
 
 ### Required Configuration Properties

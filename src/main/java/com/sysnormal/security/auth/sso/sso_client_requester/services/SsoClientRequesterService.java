@@ -1,11 +1,11 @@
-package com.sysnormal.libs.security.sso.spring.client_requester.services;
+package com.sysnormal.security.auth.sso.sso_client_requester.services;
 
-import com.sysnormal.libs.commons.DefaultDataSwap;
-import com.sysnormal.libs.security.sso.spring.client_requester.properties.SsoProperties;
-import com.sysnormal.libs.utils.TextUtils;
-import com.sysnormal.libs.utils.TokenUtils;
-import com.sysnormal.libs.utils.network.http.response.ClientRawResponseWrapper;
-import com.sysnormal.libs.utils.network.http.response.ResponseUtils;
+import com.sysnormal.commons.core.DefaultDataSwap;
+import com.sysnormal.commons.core.utils_core.TextUtils;
+import com.sysnormal.commons.spring.spring_web_utils.response.ClientRawResponseWrapper;
+import com.sysnormal.commons.spring.spring_web_utils.response.ResponseUtils;
+import com.sysnormal.security.auth.sso.sso_client_requester.properties.SsoProperties;
+import com.sysnormal.security.auth.sso.sso_client_requester.services.jwt.JwtSsoClientRequesterService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +25,9 @@ public class SsoClientRequesterService {
 
     @Autowired
     ObjectMapper objectMapper;
+
+    @Autowired
+    JwtSsoClientRequesterService jwtSsoClientRequesterService;
 
     public static final int MAX_RECURSIVE_REQUEST_ATTEMPS = 10;
 
@@ -66,7 +69,7 @@ public class SsoClientRequesterService {
         DefaultDataSwap result = new DefaultDataSwap();
         try {
             if (TextUtils.hasNotNullText(refreshToken)) {
-                Long expirationIn = TokenUtils.getExpiration(refreshToken);
+                Long expirationIn = jwtSsoClientRequesterService.getExpiration(refreshToken);
                 if (expirationIn != null && expirationIn * 1000 > System.currentTimeMillis()) {
                     result = refreshTokenOnSso(refreshToken);
                 } else {
@@ -125,7 +128,7 @@ public class SsoClientRequesterService {
                 String token = jsonData.get("token").asText();
                 logger.debug("token {}", token);
                 if (TextUtils.hasNotNullText(token)) {
-                    Long expiresIn = TokenUtils.getExpiration(token); //seconds
+                    Long expiresIn = jwtSsoClientRequesterService.getExpiration(token); //seconds
                     logger.debug("expiresIn {}, now millis {}, seconds remaining {}", expiresIn, System.currentTimeMillis(), (expiresIn != null && expiresIn > 0) ? expiresIn - System.currentTimeMillis() / 1000 : "infinit");
                     if (expiresIn == null || (expiresIn != null && expiresIn * 1000 > System.currentTimeMillis())) {
                         this.lastToken = token;
@@ -137,7 +140,7 @@ public class SsoClientRequesterService {
                         String refreshToken = jsonData.get("refreshToken").asText();
                         logger.debug("refreshToken {}", refreshToken);
                         if (TextUtils.hasNotNullText(refreshToken)) {
-                            expiresIn = TokenUtils.getExpiration(refreshToken);
+                            expiresIn = jwtSsoClientRequesterService.getExpiration(refreshToken);
                             if (expiresIn == null || (expiresIn != null && expiresIn * 1000 > System.currentTimeMillis())) {
                                 this.lastRefreshToken = refreshToken;
                                 this.lastRefreshTokenExpirationInstant = expiresIn != null ? Instant.ofEpochSecond(expiresIn) : null;

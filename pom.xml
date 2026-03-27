@@ -3,10 +3,11 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>com.sysnormal.libs.security.sso.spring</groupId>
-	<artifactId>client-requester</artifactId>
+	<!--<groupId>com.sysnormal.security.auth.sso</groupId>-->
+    <groupId>io.github.sysnormal1.security.auth.sso</groupId>
+	<artifactId>sso-client-requester</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>client-requester</name>
+	<name>sso-client-requester</name>
     <description>Spring Boot Auto-Configuration library for Single Sign-On (SSO) client requester</description>
     <url>https://github.com/sysnormal1/sso-client-requester</url>
 
@@ -50,7 +51,7 @@
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
-                <version>4.0.2</version>
+                <version>4.0.4</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -89,69 +90,37 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>com.sysnormal.libs.commons</groupId>
-            <artifactId>default-data-swap</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>io.github.sysnormal1.commons.core</groupId>
+            <artifactId>default-data-swap-core</artifactId>
+            <version>0.0.3-SNAPSHOT</version>
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>com.sysnormal.libs</groupId>
-            <artifactId>utils</artifactId>
-            <version>0.0.1-SNAPSHOT</version>
+            <groupId>io.github.sysnormal1.commons.core</groupId>
+            <artifactId>utils-core</artifactId>
+            <version>0.0.2-SNAPSHOT</version>
             <optional>true</optional>
         </dependency>
-
+        <dependency>
+            <groupId>io.github.sysnormal1.commons.spring</groupId>
+            <artifactId>spring-web-utils</artifactId>
+            <version>0.0.2-SNAPSHOT</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>io.github.sysnormal1.security.core</groupId>
+            <artifactId>security-core</artifactId>
+            <version>0.0.2-SNAPSHOT</version>
+            <optional>true</optional>
+        </dependency>
 	</dependencies>
 
-    <distributionManagement>
-        <snapshotRepository>
-            <id>central-snapshots</id>
-            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
-            <releases>
-                <enabled>false</enabled>
-            </releases>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </snapshotRepository>
-        <repository>
-            <id>central-releases</id>
-            <name>Central Repository</name>
-            <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/</url>
-            <releases>
-                <enabled>true</enabled>
-            </releases>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
-    </distributionManagement>
-
-	<build>
-		<plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-toolchains-plugin</artifactId>
-                <version>3.2.0</version>
-                <executions>
-                    <execution>
-                        <phase>validate</phase>
-                        <goals>
-                            <goal>toolchain</goal>
-                        </goals>
-                    </execution>
-                </executions>
-                <configuration>
-                    <toolchains>
-                        <jdk>${java.version}</jdk>
-                    </toolchains>
-                </configuration>
-            </plugin>
-
+    <build>
+        <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
+                <version>3.15.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -181,7 +150,7 @@
                 </executions>
             </plugin>
 
-            <!--<plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>3.2.8</version>
@@ -194,12 +163,12 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>-->
+            </plugin>
 
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.9.0</version>
+                <version>0.10.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central-releases</publishingServerId>
@@ -207,7 +176,8 @@
                     <checksums>required</checksums>
                 </configuration>
             </plugin>
-		</plugins>
-	</build>
+
+        </plugins>
+    </build>
 
 </project>

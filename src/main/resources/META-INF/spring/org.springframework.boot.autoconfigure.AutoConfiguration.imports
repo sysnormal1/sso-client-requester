@@ -1,1 +1,1 @@
-com.sysnormal.libs.security.sso.spring.client_requester.configs.SsoClientRequesterAutoConfiguration
+com.sysnormal.security.auth.sso.sso_client_requester.configs.SsoClientRequesterAutoConfiguration
