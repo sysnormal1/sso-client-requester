@@ -1,8 +1,11 @@
 # Sysnormal Sso client requester
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.sysnormal1.security.auth.sso/sso-client-requester.svg)](https://central.sonatype.com/artifact/io.github.sysnormal1.security.auth.sso/sso-client-requester)
+[![Repository](https://img.shields.io/badge/view-mvnrepository-blue)](https://mvnrepository.com/artifact/io.github.sysnormal1.security.auth.sso/sso-client-requester)
+[![GitHub tag](https://img.shields.io/github/v/tag/sysnormal1/sso-client-requester)](https://github.com/sysnormal1/sso-client-requester)
 
 This library provides a Spring Security auto-configuration for integrating Single Sign-On (SSO) authentication into your Spring Boot application. It includes a base security configuration and a filter to validate JWT tokens against an SSO server, ensuring secure access to protected endpoints.
 
-This library can also be used as a client implementation of the [SSO Starter](https://github.com/sysnormal1/java-spring-sso-starter), allowing other Java-based APIs or backends to easily integrate into the same authentication ecosystem.
+This library can also be used as a client implementation of the [SSO Starter](https://github.com/sysnormal1/sso-starter), allowing other Java-based APIs or backends to easily integrate into the same authentication ecosystem.
 
 ## Features
 - Provides methods for login and check token on sso
@@ -20,15 +23,15 @@ Add the following dependency to your `pom.xml` (Maven) or `build.gradle` (Gradle
 ### Maven
 ```xml
 <dependency>
-    <groupId>com.sysnormal.libs.security.sso.spring</groupId>
-    <artifactId>client-requester</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <groupId>io.github.sysnormal1.security.auth.sso</groupId>
+    <artifactId>sso-client-requester</artifactId>
+    <version>0.0.2</version>
 </dependency>
 ```
 
 ### Gradle
 ```groovy
-implementation 'com.sysnormal.libs.security.sso.spring:client-requester:0.0.1-SNAPSHOT'
+implementation 'io.github.sysnormal1.security.auth.sso:sso-client-requester:0.0.2'
 ```
 
 ## Configuration and usage
@@ -63,7 +66,7 @@ sso:
 
 This client library is designed to integrate directly with the SSO Starter server, allowing seamless validation of authentication tokens and centralized access management across multiple applications.
 
-For more details on the SSO server setup, refer to the main [SSO Starter](https://github.com/sysnormal1/java-spring-sso-starter).
+For more details on the SSO server setup, refer to the main [SSO Starter](https://github.com/sysnormal1/sso-starter).
 
 ---
 
@@ -78,8 +81,8 @@ For issues, feature requests, or contributions, please contact the starter maint
 To get started locally:
 
 ```bash
-git clone https://github.com/sysnormal1/java-spring-sso-client-requester.git
-cd java-spring-sso-client-requester
+git clone https://github.com/sysnormal1/sso-client-requester.git
+cd sso-client-requester
 mvn install
 ```
 
@@ -103,5 +106,3 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 GitHub: [@aalencarvz1](https://github.com/aalencarvz1)
 
 ---
-
-> 🔗 Published on [Maven Central (Sonatype)](https://central.sonatype.com/artifact/com.sysnormal.starters.security.sso.spring/client-requester)
