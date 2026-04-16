@@ -25,7 +25,7 @@ Add the following dependency to your `pom.xml` (Maven) or `build.gradle` (Gradle
 <dependency>
     <groupId>io.github.sysnormal1.security.auth.sso</groupId>
     <artifactId>sso-client-requester</artifactId>
-    <version>0.0.2</version>
+    <version>0.0.3</version>
 </dependency>
 ```
 

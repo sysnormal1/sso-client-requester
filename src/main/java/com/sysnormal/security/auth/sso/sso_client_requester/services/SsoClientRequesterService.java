@@ -87,7 +87,7 @@ public class SsoClientRequesterService {
 
 
 
-    public String getToken(String email, String password, Long systemId) {
+    public String getToken(String email, String password, Long systemId) throws Exception {
         logger.debug("INIT {}.{}",this.getClass().getSimpleName(), "getToken");
         logger.debug("current token {}, expires in {}, remaining seconds {}", lastToken, lastTokenExpirationInstant, lastTokenExpirationInstant != null ? Duration.between(Instant.now(), lastTokenExpirationInstant).getSeconds() : 0);
         logger.debug("current refreshToken {}, expires in {}, remaining seconds {}", lastRefreshToken, lastRefreshTokenExpirationInstant, lastRefreshTokenExpirationInstant != null ? Duration.between(Instant.now(), lastRefreshTokenExpirationInstant).getSeconds() : 0);
@@ -100,21 +100,25 @@ public class SsoClientRequesterService {
             DefaultDataSwap loginResponse = refreshToken(lastRefreshToken, email, password, systemId);
             if (loginResponse.success) {
                 result = lastToken;
+            } else {
+                throw new Exception(loginResponse.message);
             }
         } else {
             logger.debug("using new login");
             DefaultDataSwap loginResponse = loginOnSso(email, password, systemId);
             if (loginResponse.success) {
                 result = lastToken;
+            } else {
+                throw new Exception(loginResponse.message);
             }
         }
         logger.debug("END {}.{} {}",this.getClass().getSimpleName(), "getToken", result);
         return result;
     }
-    public String getToken() {
+    public String getToken() throws Exception {
         return getToken(this.ssoProperties.getDefaultEmail(), this.ssoProperties.getDefaultPassword(), null);
     }
-    public String getToken(String email, String password) {
+    public String getToken(String email, String password) throws Exception {
         return getToken(email, password, null);
     }
 
